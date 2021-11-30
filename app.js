@@ -9,7 +9,14 @@ const app = express();
 const SECRET =
   "d5bf5d20d36046da2c4f6dc16ad03c4143adf399cb4bc1fd25dc03462ac951e946116e632af0a10127900437972c63cf622a1b6401c30e5134c44e2c3f8dc698";
 
-const USERS = [];
+const USERS = [
+  {
+    name: "admin",
+    email: "admin@email.com",
+    password: "$2b$10$BYOHlZ1OyUXaGibdL0fVSOU.Zug0mueqJk6DCxewq8ZFnrgRYHbCC",
+    isAdmin: true,
+  },
+];
 const INFORMATION = [];
 const REFRESHTOKENS = [];
 
@@ -55,7 +62,6 @@ app.post("/users/register", async (req, res) => {
 
 app.post("/users/login", async (req, res) => {
   const { email, password } = req.body;
-  console.log(email, password);
   const user = USERS.find((user) => user.email === email);
   if (!user) {
     return res.status(404).send("cannot find user");
@@ -66,20 +72,19 @@ app.post("/users/login", async (req, res) => {
   const token = jwt.sign(user, SECRET, { expiresIn: "10s" });
   const lastToken = jwt.sign(user, SECRET);
   REFRESHTOKENS.push(lastToken);
-  console.log(token);
   return res.status(200).send({
     accessToken: token,
     refreshToken: lastToken,
     email: email,
     name: user.name,
-    isAdmin: false,
+    isAdmin: user.isAdmin,
   });
 });
 
 app.post("/users/token", (req, res) => {
-  const { Refreshtoken } = req.body;
-  if (!Refreshtoken) return res.status(401).send("Refresh Token Required");
-  jwt.verify(refreshToken, SECRET, (failure, user) => {
+  const { token } = req.body;
+  if (!token) return res.status(401).send("Refresh Token Required");
+  jwt.verify(token, SECRET, (failure, user) => {
     if (user) {
       const accessToken = jwt.sign(user, SECRET);
       return res.status(200).send({ accessToken });
@@ -98,6 +103,56 @@ app.post("/users/logout", (req, res) => {
     ? res.status(400).send("Invalid Refresh Token")
     : REFRESHTOKENS.splice(tokenIndex, 1);
   res.status(200).send("User Logged Out Successfully");
+});
+
+app.options("/", (req, res) => {
+  res.setHeader("Allow", "OPTIONS, GET, POST");
+  res.status(200).send([
+    {
+      method: "post",
+      path: "/users/register",
+      description: "Register, Required: email, name, password",
+      example: {
+        body: { email: "user@email.com", name: "user", password: "password" },
+      },
+    },
+    {
+      method: "post",
+      path: "/users/login",
+      description: "Login, Required: valid email and password",
+      example: { body: { email: "user@email.com", password: "password" } },
+    },
+    {
+      method: "post",
+      path: "/users/token",
+      description: "Renew access token, Required: valid refresh token",
+      example: { headers: { token: "*Refresh Token*" } },
+    },
+    {
+      method: "post",
+      path: "/users/tokenValidate",
+      description: "Access Token Validation, Required: valid access token",
+      example: { headers: { Authorization: "Bearer *Access Token*" } },
+    },
+    {
+      method: "get",
+      path: "/api/v1/information",
+      description: "Access user's information, Required: valid access token",
+      example: { headers: { Authorization: "Bearer *Access Token*" } },
+    },
+    {
+      method: "post",
+      path: "/users/logout",
+      description: "Logout, Required: access token",
+      example: { body: { token: "*Refresh Token*" } },
+    },
+    {
+      method: "get",
+      path: "api/v1/users",
+      description: "Get users DB, Required: Valid access token of admin user",
+      example: { headers: { authorization: "Bearer *Access Token*" } },
+    },
+  ]);
 });
 
 app.use(errorHandler);
