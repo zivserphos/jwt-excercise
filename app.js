@@ -23,18 +23,25 @@ app.get("/", (req, res) => {
   res.send("fuck off");
 });
 
-app.get("/api/v1/information");
+app.get("/api/v1/information", (req, res) => {
+  const token = req.headers.authorization.split(" ")[1];
+  if (!token) return res.status(401).send("Access Token Required");
+  jwt.verify(token, SECRET, (failure, user) => {
+    if (user) {
+      const { email } = user;
+      const info = INFORMATION.find((obj) => obj.email === email).info;
+      return res.status(200).send([{ email }, { info }]);
+    }
+    return res.status(403).send("Invalid Access Token");
+  });
+});
 app.get("/api/v1/users", (req, res) => {});
 
 app.post("/users/register", async (req, res) => {
-  console.log(USERS);
   const { email, name, password } = req.body;
-  if (
-    USERS.findIndex((user) => {
-      user.name === name;
-    }) !== -1
-  )
+  if (USERS.find((user) => user.name === name)) {
     return res.status(409).send("user already exists");
+  }
   const hashPassword = await bcrypt.hash(password, await bcrypt.genSalt(10));
   USERS.push({
     email: email,
@@ -42,20 +49,25 @@ app.post("/users/register", async (req, res) => {
     password: hashPassword,
     isAdmin: false,
   });
-  console.log(hashPassword);
   INFORMATION.push({ email: `${email}`, info: `${name} info` });
   res.status(201).send("Register Success");
 });
 
 app.post("/users/login", async (req, res) => {
   const { email, password } = req.body;
+  console.log(email, password);
   const user = USERS.find((user) => user.email === email);
-  if (!user) return res.status(404).send("cannot find user");
-  if (!(await bcrypt.compare(password, user.password)))
+  if (!user) {
+    return res.status(404).send("cannot find user");
+  }
+  if (!(await bcrypt.compare(password, user.password))) {
     return res.status(403).send("User or Password incorrect");
+  }
   const token = jwt.sign(user, SECRET, { expiresIn: "10s" });
   const lastToken = jwt.sign(user, SECRET);
-  res.status(200).send({
+  REFRESHTOKENS.push(lastToken);
+  console.log(token);
+  return res.status(200).send({
     accessToken: token,
     refreshToken: lastToken,
     email: email,
@@ -64,15 +76,33 @@ app.post("/users/login", async (req, res) => {
   });
 });
 
-app.post("/users/token");
+app.post("/users/token", (req, res) => {
+  const { Refreshtoken } = req.body;
+  if (!Refreshtoken) return res.status(401).send("Refresh Token Required");
+  jwt.verify(refreshToken, SECRET, (failure, user) => {
+    if (user) {
+      const accessToken = jwt.sign(user, SECRET);
+      return res.status(200).send({ accessToken });
+    }
+    return res.status(403).send("Invalid Refresh Token");
+  });
+});
 
 app.post("/users/tokenValidate");
 
-app.post("/users/logout");
+app.post("/users/logout", (req, res) => {
+  const refreshToken = req.body.token;
+  if (!refreshToken) return res.status(400).send("Refresh Token Required");
+  const tokenIndex = REFRESHTOKENS.find((token) => token === refreshToken);
+  !tokenIndex
+    ? res.status(400).send("Invalid Refresh Token")
+    : REFRESHTOKENS.splice(tokenIndex, 1);
+  res.status(200).send("User Logged Out Successfully");
+});
 
 app.use(errorHandler);
 
-app.get("*", function (req, res) {
+app.use("*", function (req, res) {
   res.send("unknown endpoint", 404);
 });
 module.exports = app;
