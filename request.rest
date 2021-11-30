@@ -1,0 +1,37 @@
+POST http://localhost:8080/users/register HTTP/1.1
+Content-Type: application/json
+
+{
+    "email": "dfsas@gmail.com" ,
+    "user" : "ziv1",
+    "password": "1234"
+}
+
+###
+POST http://localhost:3000/users/login HTTP/1.1
+
+content
+###
+POST http://localhost:3000/users/tokenValidate HTTP/1.1
+
+content
+###
+GET  http://localhost:3000/api/v1/information HTTP/1.1
+
+content
+###
+POST http://localhost:300/users/token HTTP/1.1
+
+content
+### 
+POST http://localhost:3000/users/logout HTTP/1.1
+
+content
+###
+POST http://localhost:3000/api/v1/users HTTP/1.1
+
+###
+GET  http://localhost:3000
+
+
+conten

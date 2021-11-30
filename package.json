@@ -21,5 +21,6 @@
   "devDependencies": {
     "jest": "^24.9.0",
     "supertest": "^4.0.2"
-  }
+  },
+  "proxy": "http://127.0.0.1:3000"
 }
